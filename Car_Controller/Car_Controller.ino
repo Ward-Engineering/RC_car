@@ -13,84 +13,53 @@
 #include <espnow.h>
 
 
-// REPLACE WITH THE MAC Address of your receiver 
-uint8_t broadcastAddress[] = {0xAC, 0x0B, 0xFB, 0xD7, 0x7D, 0x92};
-
+// REPLACE WITH THE MAC Address of your receiver (the one you'll be sending the data to)
+uint8_t broadcastAddress[] = {0xAC, 0x0B, 0xFB, 0xD7, 0xD1, 0xD8};
 
 
 // Updates communication every 10 seconds
-const long interval = 10000; 
+const long interval = 500; 
 unsigned long previousMillis = 0;    // will store last time DHT was updated 
 
 // Variable to store if sending data was successful
 String success;
 
+//Variable to store incoming driver inputs
+int incomingGasPosition;
+
 //Structure example to send data
 //Must match the receiver structure
 typedef struct struct_message {
-    float steering;
+    int accelaration;
 } struct_message;
 
 // Create a struct_message called DHTReadings to hold sensor readings
-struct_message DHTReadings;
+struct_message speedReadings;
 
 // Create a struct_message to hold incoming sensor readings
 struct_message incomingReadings;
 
-// Callback when data is sent
-void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
-  Serial.print("Last Packet Send Status: ");
-  if (sendStatus == 0){
-    Serial.println("Delivery success");
-  }
-  else{
-    Serial.println("Delivery fail");
-  }
-}
-
 // Callback when data is received
 void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  Serial.print("Bytes received: ");
+  Serial.print("Bytes received in the car: ");
   Serial.println(len);
-  incomingTemp = incomingReadings.temp;
-  incomingHum = incomingReadings.hum;
+  incomingGasPosition = incomingReadings.accelaration;
 }
 
-void getReadings(){
-  // Read Temperature
-  temperature = dht.readTemperature();
-  // Read temperature as Fahrenheit (isFahrenheit = true)
-  //float t = dht.readTemperature(true);
-  if (isnan(temperature)){
-    Serial.println("Failed to read from DHT");
-    temperature = 0.0;
-  }
-  humidity = dht.readHumidity();
-  if (isnan(humidity)){
-    Serial.println("Failed to read from DHT");
-    humidity = 0.0;
-  }
-}
 
 void printIncomingReadings(){
   // Display Readings in Serial Monitor
-  Serial.println("INCOMING READINGS");
-  Serial.print("Temperature: ");
-  Serial.print(incomingTemp);
-  Serial.println(" ºC");
-  Serial.print("Humidity: ");
-  Serial.print(incomingHum);
-  Serial.println(" %");
+  Serial.println("INCOMING READINGS in the car");
+  Serial.print("Accelerator: ");
+  Serial.print(incomingGasPosition);
 }
  
 void setup() {
   // Init Serial Monitor
-  Serial.begin(115200);
+  Serial.begin(4800);
+  Serial.println("Commencing operation 66");
 
-  // Init DHT sensor
-  dht.begin();
- 
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
@@ -103,10 +72,6 @@ void setup() {
 
   // Set ESP-NOW Role
   esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
-
-  // Once ESPNow is successfully Init, we will register for Send CB to
-  // get the status of Trasnmitted packet
-  esp_now_register_send_cb(OnDataSent);
   
   // Register peer
   esp_now_add_peer(broadcastAddress, ESP_NOW_ROLE_COMBO, 1, NULL, 0);
@@ -121,15 +86,6 @@ void loop() {
     // save the last time you updated the DHT values
     previousMillis = currentMillis;
 
-    //Get DHT readings
-    getReadings();
-
-    //Set values to send
-    DHTReadings.temp = temperature;
-    DHTReadings.hum = humidity;
-
-    // Send message via ESP-NOW
-    esp_now_send(broadcastAddress, (uint8_t *) &DHTReadings, sizeof(DHTReadings));
 
     // Print incoming readings
     printIncomingReadings();
