@@ -22,8 +22,8 @@ uint8_t broadcastAddress[] = {0xAC, 0x0B, 0xFB, 0xD7, 0x7D, 0x92};
 //variable to store analog input reading
 int gasPosition;
 
-// Updates communication every 10 seconds
-const long interval = 500; 
+// Updates communication every 100 milliseconds
+const long interval = 10; 
 unsigned long previousMillis = 0;    // will store last time DHT was updated 
 
 // Variable to store if sending data was successful
@@ -43,16 +43,10 @@ struct_message incomingReadings;
 
 // Callback when data is sent
 void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
-  Serial.print("Last Packet Send Status: ");
-  if (sendStatus == 0){
-    Serial.println("Delivery success");
-  }
-  else{
+  if (sendStatus != 0){
     Serial.println("Delivery fail");
   }
 }
-
-
 void getReadings(){
   // Read accelerator position
   gasPosition = analogRead(Gas);
@@ -100,8 +94,6 @@ void loop() {
   
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
-
-    Serial.println("We are looping ow boy");
 
     // save the last time you updated the DHT values
     previousMillis = currentMillis;

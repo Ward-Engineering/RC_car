@@ -12,14 +12,10 @@
 #include <ESP8266WiFi.h>
 #include <espnow.h>
 
+#define Gas 5
 
 // REPLACE WITH THE MAC Address of your receiver (the one you'll be sending the data to)
 uint8_t broadcastAddress[] = {0xAC, 0x0B, 0xFB, 0xD7, 0xD1, 0xD8};
-
-
-// Updates communication every 10 seconds
-const long interval = 500; 
-unsigned long previousMillis = 0;    // will store last time DHT was updated 
 
 // Variable to store if sending data was successful
 String success;
@@ -42,9 +38,8 @@ struct_message incomingReadings;
 // Callback when data is received
 void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  Serial.print("Bytes received in the car: ");
-  Serial.println(len);
-  incomingGasPosition = incomingReadings.accelaration;
+  incomingGasPosition = incomingReadings.accelaration>>2;
+  analogWrite(Gas,incomingGasPosition);
 }
 
 
@@ -52,10 +47,13 @@ void printIncomingReadings(){
   // Display Readings in Serial Monitor
   Serial.println("INCOMING READINGS in the car");
   Serial.print("Accelerator: ");
-  Serial.print(incomingGasPosition);
+  Serial.println(incomingGasPosition);
 }
  
 void setup() {
+  //assign pins
+  pinMode(Gas, INPUT);
+
   // Init Serial Monitor
   Serial.begin(4800);
   Serial.println("Commencing operation 66");
@@ -81,13 +79,4 @@ void setup() {
 }
  
 void loop() {
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    // save the last time you updated the DHT values
-    previousMillis = currentMillis;
-
-
-    // Print incoming readings
-    printIncomingReadings();
-  }
 }
