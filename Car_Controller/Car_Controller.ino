@@ -38,7 +38,7 @@ struct_message incomingReadings;
 // Callback when data is received
 void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  incomingGasPosition = incomingReadings.accelaration>>2;
+  incomingGasPosition = incomingReadings.accelaration;
   analogWrite(Gas,incomingGasPosition);
 }
 

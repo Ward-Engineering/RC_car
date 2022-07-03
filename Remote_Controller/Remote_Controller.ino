@@ -21,6 +21,7 @@ uint8_t broadcastAddress[] = {0xAC, 0x0B, 0xFB, 0xD7, 0x7D, 0x92};
 
 //variable to store analog input reading
 int gasPosition;
+int prevGasPosition;
 
 // Updates communication every 100 milliseconds
 const long interval = 10; 
@@ -47,19 +48,24 @@ void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
     Serial.println("Delivery fail");
   }
 }
-void getReadings(){
+void pollAccelerator(){
   // Read accelerator position
   gasPosition = analogRead(Gas);
-  delay(50);
-  Serial.print("Remote reads the following : ");
-  Serial.println(gasPosition);
+  gasPosition = gasPosition>>2;
+  if(prevGasPosition != gasPosition){
+    //Set values to send
+    gasReadings.acceleration = gasPosition;
+    esp_now_send(broadcastAddress, (uint8_t *) &gasReadings, sizeof(gasReadings));
+    Serial.println("Send a new value");
+    Serial.println(gasPosition);
+    prevGasPosition = gasPosition;
+  }
 }
  
 void setup() {
   //assign pins 
   pinMode(LED1, OUTPUT);
   pinMode(Gas,INPUT);
-
 
   //setup serial monitor
   Serial.begin(4800);
@@ -99,13 +105,6 @@ void loop() {
     previousMillis = currentMillis;
 
     //Get DHT readings
-    getReadings();
-
-    //Set values to send
-    gasReadings.acceleration = gasPosition;
-    
-    // Send message via ESP-NOW
-    esp_now_send(broadcastAddress, (uint8_t *) &gasReadings, sizeof(gasReadings));
-
+    pollAccelerator();
   }
 }
