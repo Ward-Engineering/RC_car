@@ -12,16 +12,21 @@
 #include <ESP8266WiFi.h>
 #include <espnow.h>
 
-#define LED1 5
-#define Gas A0
+#define Steering A0
+#define Throttle 5
+#define Brake 4
 
 
 // REPLACE WITH THE MAC Address of your receiver 
 uint8_t broadcastAddress[] = {0xAC, 0x0B, 0xFB, 0xD7, 0x7D, 0x92};
 
 //variable to store analog input reading
-int gasPosition;
-int prevGasPosition;
+int steeringAngle;
+int prevSteeringAngle;
+bool throttleApplied;
+bool prevThrottleApplied;
+bool brakeApplied;
+bool prevBrakesApplied;
 
 // Updates communication every 100 milliseconds
 const long interval = 10; 
@@ -33,14 +38,14 @@ String success;
 //Structure example to send data
 //Must match the receiver structure
 typedef struct struct_message {
-    int acceleration;
+    int steeringAngle;
+    bool brakeApplied;
+    bool throttleApplied;
 } struct_message;
 
 // Create a struct_message called DHTReadings to hold sensor readings
-struct_message gasReadings;
+struct_message inputReadings;
 
-// Create a struct_message to hold incoming sensor readings
-struct_message incomingReadings;
 
 // Callback when data is sent
 void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
@@ -48,24 +53,29 @@ void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
     Serial.println("Delivery fail");
   }
 }
-void pollAccelerator(){
+void pollInputs(){
   // Read accelerator position
-  gasPosition = analogRead(Gas);
-  gasPosition = gasPosition>>2;
-  if(prevGasPosition != gasPosition){
+  steeringAngle = analogRead(Steering);
+  steeringAngle = steeringAngle>>2;
+  brakeApplied = digitalRead(Brake);
+  throttleApplied = digitalRead(Throttle);
+  if((prevSteeringAngle != steeringAngle) || (prevBrakesApplied != brakeApplied) || (prevThrottleApplied != throttleApplied)){
     //Set values to send
-    gasReadings.acceleration = gasPosition;
-    esp_now_send(broadcastAddress, (uint8_t *) &gasReadings, sizeof(gasReadings));
+    inputReadings.steeringAngle = steeringAngle;
+    inputReadings.brakeApplied = brakeApplied;
+    inputReadings.throttleApplied = throttleApplied;
+    esp_now_send(broadcastAddress, (uint8_t *) &inputReadings, sizeof(inputReadings));
     Serial.println("Send a new value");
-    Serial.println(gasPosition);
-    prevGasPosition = gasPosition;
+    Serial.println(steeringAngle);
+    prevSteeringAngle = steeringAngle;
+    prevBrakesApplied = brakeApplied;
+    prevThrottleApplied = throttleApplied;
   }
 }
  
 void setup() {
   //assign pins 
-  pinMode(LED1, OUTPUT);
-  pinMode(Gas,INPUT);
+  pinMode(Steering,INPUT);
 
   //setup serial monitor
   Serial.begin(4800);
@@ -105,6 +115,6 @@ void loop() {
     previousMillis = currentMillis;
 
     //Get DHT readings
-    pollAccelerator();
+    pollInputs();
   }
 }

@@ -12,7 +12,9 @@
 #include <ESP8266WiFi.h>
 #include <espnow.h>
 
-#define Gas 5
+#define Steering 5
+#define Throttle 14
+#define Brake 12
 
 // REPLACE WITH THE MAC Address of your receiver (the one you'll be sending the data to)
 uint8_t broadcastAddress[] = {0xAC, 0x0B, 0xFB, 0xD7, 0xD1, 0xD8};
@@ -21,16 +23,18 @@ uint8_t broadcastAddress[] = {0xAC, 0x0B, 0xFB, 0xD7, 0xD1, 0xD8};
 String success;
 
 //Variable to store incoming driver inputs
-int incomingGasPosition;
+int incomingSteering;
+bool appliedBrake;
+bool appliedThrottle;
 
 //Structure example to send data
 //Must match the receiver structure
 typedef struct struct_message {
-    int accelaration;
+    int steeringAngle;
+    bool brakeApplied;
+    bool throttleApplied;
 } struct_message;
 
-// Create a struct_message called DHTReadings to hold sensor readings
-struct_message speedReadings;
 
 // Create a struct_message to hold incoming sensor readings
 struct_message incomingReadings;
@@ -38,8 +42,23 @@ struct_message incomingReadings;
 // Callback when data is received
 void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  incomingGasPosition = incomingReadings.accelaration;
-  analogWrite(Gas,incomingGasPosition);
+  incomingSteering = incomingReadings.steeringAngle;
+  appliedBrake = incomingReadings.brakeApplied;
+  appliedThrottle = incomingReadings.throttleApplied;
+  analogWrite(Steering,incomingSteering);
+  if(appliedBrake){
+    digitalWrite(Throttle,LOW);
+    digitalWrite(Brake,HIGH);
+  }
+  else if(appliedThrottle){
+    digitalWrite(Throttle,HIGH);
+    digitalWrite(Brake,LOW);
+  }
+  
+  else{
+    digitalWrite(Throttle,LOW);
+    digitalWrite(Brake,LOW);
+  }
 }
 
 
@@ -47,12 +66,14 @@ void printIncomingReadings(){
   // Display Readings in Serial Monitor
   Serial.println("INCOMING READINGS in the car");
   Serial.print("Accelerator: ");
-  Serial.println(incomingGasPosition);
+  Serial.println(incomingSteering);
 }
  
 void setup() {
   //assign pins
-  pinMode(Gas, INPUT);
+  pinMode(Steering, INPUT);
+  pinMode(Brake,OUTPUT);
+  pinMode(Throttle,OUTPUT);
 
   // Init Serial Monitor
   Serial.begin(4800);
